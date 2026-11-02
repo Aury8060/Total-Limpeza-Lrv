@@ -1,0 +1,1253 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Total Limpeza RLV</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        /* Dialog Animations */
+        .dialog-backdrop { animation: fadeIn 0.2s ease-out forwards; }
+        .dialog-content { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .dialog-fade-out { animation: fadeOut 0.2s ease-in forwards; }
+        .dialog-slide-down { animation: slideDown 0.2s ease-in forwards; }
+        
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        @keyframes slideDown { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(20px) scale(0.95); } }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        .star-rating-btn { cursor: pointer; transition: transform 0.1s; }
+        .star-rating-btn:hover { transform: scale(1.2); }
+    </style>
+</head>
+<body class="text-gray-800 antialiased h-screen overflow-hidden flex flex-col">
+
+    <!-- Global Custom Dialog System -->
+    <div id="dialog-overlay" class="fixed inset-0 z-50 hidden flex items-center justify-center">
+        <!-- FIXED: Added explicit ID "dialog-bg" to avoid classList null pointer errors on re-open -->
+        <div id="dialog-bg" class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm dialog-backdrop" onclick="window.Dialog.close(false)"></div>
+        <div id="dialog-box" class="relative bg-white rounded-2xl shadow-2xl w-11/12 max-w-md mx-auto flex flex-col overflow-hidden dialog-content m-4 max-h-[90vh]">
+            <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                <h3 id="dialog-title" class="text-lg font-bold text-gray-900 flex items-center gap-2"></h3>
+                <button onclick="window.Dialog.close(false)" class="text-gray-400 hover:text-gray-600 bg-gray-200/50 hover:bg-gray-200 px-3 py-1 rounded-lg text-sm font-medium transition-colors">
+                    ← Voltar (Esc)
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto">
+                <p id="dialog-message" class="text-gray-600 text-sm mb-4"></p>
+                <div id="dialog-custom-html" class="w-full"></div>
+            </div>
+            <div id="dialog-actions" class="px-6 py-4 bg-gray-50 flex justify-end gap-3 border-t border-gray-100">
+                <button id="dialog-btn-cancel" onclick="window.Dialog.close(false)" class="px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors shadow-sm">Cancelar</button>
+                <button id="dialog-btn-confirm" onclick="window.Dialog.close(true)" class="px-4 py-2 text-sm font-semibold text-white bg-sky-600 rounded-xl hover:bg-sky-700 transition-colors shadow-sm shadow-sky-600/20">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login View -->
+    <div id="view-login" class="flex-1 flex flex-col justify-center items-center p-4 bg-gradient-to-br from-sky-50 to-blue-100 absolute inset-0 z-40">
+        <div class="bg-white p-8 rounded-3xl shadow-xl shadow-sky-900/10 w-full max-w-sm flex flex-col items-center">
+            <div class="w-24 h-24 bg-gradient-to-tr from-sky-500 to-blue-600 rounded-full flex items-center justify-center text-white text-3xl font-black shadow-lg mb-6 ring-4 ring-sky-50 overflow-hidden">
+                <!-- If logo.png doesn't exist, it falls back to TL -->
+                <img src="logo.png" alt="Logo" class="w-full h-full object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                <span class="hidden">TL</span>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-900 mb-2">Total Limpeza</h1>
+            <p class="text-sm text-gray-500 mb-8 text-center">Gestão inteligente de serviços</p>
+
+            <form id="login-form" class="w-full space-y-4" onsubmit="event.preventDefault(); window.app.login();">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Usuário / Nome</label>
+                    <input type="text" id="login-name" required class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all outline-none" placeholder="">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Senha / Telefone</label>
+                    <input type="password" id="login-pass" required class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition-all outline-none" placeholder="Sua senha">
+                </div>
+                <button type="submit" class="w-full py-3 px-4 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl shadow-md shadow-sky-600/30 transition-all active:scale-[0.98]">
+                    Entrar no Sistema
+                </button>
+            </form>
+            
+            <div class="mt-6 pt-6 border-t border-gray-100 w-full text-center">
+                <p class="text-sm text-gray-600 mb-3">É cliente novo?</p>
+                <button onclick="window.app.showRegister()" class="w-full py-3 px-4 bg-white border-2 border-sky-100 text-sky-700 hover:bg-sky-50 font-bold rounded-xl transition-all">
+                    Criar Cadastro Cliente
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App Container -->
+    <div id="view-app" class="hidden flex-1 flex flex-col h-full relative">
+        <!-- Header -->
+        <header class="bg-white border-b border-gray-200 shadow-sm z-10">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 bg-sky-600 rounded-full flex items-center justify-center text-white text-xs font-bold">TL</div>
+                    <span class="font-bold text-gray-900 hidden sm:block">Total Limpeza</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="text-right">
+                        <p id="header-user-name" class="text-sm font-bold text-gray-900">Nome</p>
+                        <p id="header-user-role" class="text-[10px] font-semibold uppercase tracking-wider text-sky-600">Role</p>
+                    </div>
+                    <button onclick="window.app.logout()" class="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Sair">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Dynamic Content Area -->
+        <main class="flex-1 overflow-y-auto bg-gray-50 p-4 sm:p-6 lg:p-8">
+            <div class="max-w-7xl mx-auto h-full">
+
+                <!-- ================= ADMIN PANEL ================= -->
+                <div id="panel-admin" class="hidden space-y-6 h-full flex flex-col">
+                    <!-- Admin Navigation -->
+                    <div class="flex gap-2 p-1 bg-gray-200/50 rounded-xl overflow-x-auto whitespace-nowrap shrink-0">
+                        <button onclick="window.app.switchAdminTab('dashboard')" id="tab-btn-dashboard" class="flex-1 py-2 px-4 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-white/50 transition-all">Dashboard</button>
+                        <button onclick="window.app.switchAdminTab('agenda')" id="tab-btn-agenda" class="flex-1 py-2 px-4 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-white/50 transition-all">Minha Agenda</button>
+                        <button onclick="window.app.switchAdminTab('ordens')" id="tab-btn-ordens" class="flex-1 py-2 px-4 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-white/50 transition-all">Ordens de Serviço</button>
+                        <button onclick="window.app.switchAdminTab('usuarios')" id="tab-btn-usuarios" class="flex-1 py-2 px-4 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-white/50 transition-all">Usuários</button>
+                    </div>
+
+                    <!-- Admin: Dashboard -->
+                    <div id="admin-tab-dashboard" class="space-y-6 flex-1 overflow-y-auto pb-10">
+                        <!-- KPI Cards -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
+                                <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Agendamentos (Mês)</h3>
+                                <p id="stat-agendamentos" class="text-3xl font-black text-gray-900 mt-2">0</p>
+                            </div>
+                            <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
+                                <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Serviços Concluídos (Mês)</h3>
+                                <p id="stat-concluidos" class="text-3xl font-black text-emerald-600 mt-2">0</p>
+                            </div>
+                            <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
+                                <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Média de Avaliações</h3>
+                                <p id="stat-rating" class="text-3xl font-black text-yellow-500 mt-2">0.0 <span class="text-xl">⭐</span></p>
+                            </div>
+                        </div>
+
+                        <!-- Charts Area -->
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center">
+                                <h3 class="text-sm font-bold text-gray-800 mb-4 w-full text-center">Status da Agenda (Mês)</h3>
+                                <div class="relative w-full max-w-[250px] aspect-square">
+                                    <canvas id="chart-status"></canvas>
+                                </div>
+                            </div>
+                            <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center">
+                                <h3 class="text-sm font-bold text-gray-800 mb-4 w-full text-center">Avaliações Recebidas</h3>
+                                <div class="relative w-full max-w-[350px] aspect-[2/1]">
+                                    <canvas id="chart-ratings"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Feedback List -->
+                        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                            <div class="px-5 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                                <h3 class="font-bold text-gray-800">Últimos Feedbacks</h3>
+                            </div>
+                            <div id="admin-feedbacks-list" class="divide-y divide-gray-100 max-h-64 overflow-y-auto">
+                                <!-- Feedbacks injected via JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Admin: Agenda -->
+                    <div id="admin-tab-agenda" class="hidden flex-col h-full pb-10">
+                        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+                            <div>
+                                <h2 class="text-lg font-bold text-gray-900">Programar Agenda</h2>
+                                <p class="text-xs text-gray-500">Defina os horários disponíveis</p>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <input type="month" id="admin-month-picker" class="border border-gray-300 rounded-xl px-3 py-2 text-sm bg-gray-50 focus:ring-sky-500 focus:border-sky-500" onchange="window.app.changeMonth('admin')">
+                                <button onclick="window.app.adminBulkReleaseMonth()" class="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors shadow-sm">
+                                    Liberar Mês
+                                </button>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 flex-1 flex flex-col overflow-hidden">
+                            <div class="grid grid-cols-7 border-b border-gray-100 bg-gray-50 text-center text-xs font-bold text-gray-500 py-3 uppercase tracking-wider">
+                                <div>Dom</div><div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div>
+                            </div>
+                            <div id="admin-calendar-grid" class="grid grid-cols-7 flex-1 auto-rows-fr bg-gray-200 gap-[1px]">
+                                <!-- Days injected via JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Admin: Ordens -->
+                    <div id="admin-tab-ordens" class="hidden flex-col h-full pb-10">
+                        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-4">
+                            <h2 class="text-lg font-bold text-gray-900">Ordens de Serviço</h2>
+                            <p class="text-xs text-gray-500">Horários agendados e aguardando execução no mês atual</p>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 overflow-y-auto" id="admin-ordens-list">
+                            <!-- Ordens injected via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Admin: Usuários -->
+                    <div id="admin-tab-usuarios" class="hidden flex-col h-full pb-10">
+                        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex-1 flex flex-col">
+                            <div class="px-5 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                                <h3 class="font-bold text-gray-800">Gestão de Usuários</h3>
+                                <button onclick="window.app.adminCreateUser()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors flex items-center gap-1 shadow-sm shadow-emerald-600/20">
+                                    + Novo Usuário
+                                </button>
+                            </div>
+                            <div class="overflow-auto flex-1 p-0">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50 sticky top-0">
+                                        <tr>
+                                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Nome</th>
+                                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Telefone/Senha</th>
+                                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Perfil</th>
+                                            <th class="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="admin-users-list" class="bg-white divide-y divide-gray-100">
+                                        <!-- Users injected via JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ================= CLIENT PANEL ================= -->
+                <div id="panel-cliente" class="hidden space-y-6 h-full flex flex-col">
+                    <div class="flex gap-2 p-1 bg-gray-200/50 rounded-xl overflow-x-auto whitespace-nowrap shrink-0">
+                        <button onclick="window.app.switchClientTab('agendar')" id="tab-btn-client-agendar" class="flex-1 py-2 px-4 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-white/50 transition-all">Agendar Limpeza</button>
+                        <button onclick="window.app.switchClientTab('meus')" id="tab-btn-client-meus" class="flex-1 py-2 px-4 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-white/50 transition-all">Meus Agendamentos</button>
+                    </div>
+
+                    <!-- Client: Agendar -->
+                    <div id="client-tab-agendar" class="flex-col h-full pb-10 flex">
+                        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+                            <div>
+                                <h2 class="text-lg font-bold text-gray-900">Agendar Serviço</h2>
+                                <p class="text-xs text-gray-500">Selecione uma data disponível</p>
+                            </div>
+                            <input type="month" id="client-month-picker" class="border border-gray-300 rounded-xl px-3 py-2 text-sm bg-gray-50 focus:ring-sky-500 focus:border-sky-500" onchange="window.app.changeMonth('cliente')">
+                        </div>
+                        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 flex-1 flex flex-col overflow-hidden relative">
+                            <div class="grid grid-cols-7 border-b border-gray-100 bg-gray-50 text-center text-xs font-bold text-gray-500 py-3 uppercase tracking-wider">
+                                <div>Dom</div><div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div>
+                            </div>
+                            <div id="client-calendar-grid" class="grid grid-cols-7 flex-1 auto-rows-fr bg-gray-200 gap-[1px]">
+                                <!-- Days injected via JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Client: Meus Agendamentos -->
+                    <div id="client-tab-meus" class="hidden flex-col h-full pb-10">
+                        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-4">
+                            <h2 class="text-lg font-bold text-gray-900">Meus Agendamentos</h2>
+                            <p class="text-xs text-gray-500">Serviços pendentes e aguardando execução</p>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 overflow-y-auto" id="client-meus-list">
+                            <!-- My Bookings injected via JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ================= EMPLOYEE PANEL ================= -->
+                <div id="panel-funcionario" class="hidden space-y-6 h-full flex flex-col">
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-4">
+                        <h2 class="text-lg font-bold text-gray-900">Rotina de Trabalho</h2>
+                        <p class="text-xs text-gray-500">Serviços agendados para este mês</p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 overflow-y-auto" id="funcionario-ordens-list">
+                        <!-- Tasks injected via JS -->
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- MAIN APPLICATION SCRIPT -->
+    <script type="module">
+        // 1. FIREBASE IMPORTS & SETUP
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getDatabase, ref, set, get, child, onValue, push, update, remove } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCEwDKZonaRqLQtZf4_5xSobNOH-bl6jcE",
+            authDomain: "lojinha-virtual-1c7b0.firebaseapp.com",
+            databaseURL: "https://lojinha-virtual-1c7b0-default-rtdb.firebaseio.com",
+            projectId: "lojinha-virtual-1c7b0",
+            storageBucket: "lojinha-virtual-1c7b0.firebasestorage.app",
+            messagingSenderId: "268453804419",
+            appId: "1:268453804419:web:2783672606c2d3db031eb6"
+        };
+
+        const firebaseApp = initializeApp(firebaseConfig);
+        const db = getDatabase(firebaseApp);
+        const dbRoot = 'Total-app';
+
+        // 2. CUSTOM DIALOG SYSTEM (Attached to Window)
+        window.Dialog = {
+            resolveRef: null,
+            isOpen: false,
+            
+            show(options) {
+                return new Promise((resolve) => {
+                    this.resolveRef = resolve;
+                    this.isOpen = true;
+                    
+                    const overlay = document.getElementById('dialog-overlay');
+                    const box = document.getElementById('dialog-box');
+                    const bg = document.getElementById('dialog-bg');
+                    
+                    const title = document.getElementById('dialog-title');
+                    const message = document.getElementById('dialog-message');
+                    const customHtml = document.getElementById('dialog-custom-html');
+                    const btnCancel = document.getElementById('dialog-btn-cancel');
+                    const btnConfirm = document.getElementById('dialog-btn-confirm');
+                    
+                    // Reset animations using classList directly on Elements
+                    overlay.classList.remove('hidden');
+                    
+                    bg.classList.remove('dialog-fade-out');
+                    bg.classList.add('dialog-backdrop');
+                    
+                    box.classList.remove('dialog-slide-down');
+                    box.classList.add('dialog-content');
+                    
+                    // Config Type
+                    const isInfo = options.type === 'info';
+                    btnCancel.style.display = (isInfo || options.hideCancel) ? 'none' : 'block';
+                    
+                    // Content
+                    let icon = 'ℹ️';
+                    if(options.type === 'success') icon = '✅';
+                    if(options.type === 'error') icon = '⚠️';
+                    
+                    title.innerHTML = `${icon} ${options.title || 'Aviso'}`;
+                    message.innerText = options.message || '';
+                    customHtml.innerHTML = options.customHtml || '';
+                    
+                    btnConfirm.innerText = options.confirmText || 'OK';
+                    btnCancel.innerText = options.cancelText || 'Cancelar';
+                    
+                    // Specific Colors
+                    if(options.type === 'error') {
+                        btnConfirm.className = 'px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-xl hover:bg-red-700 transition-colors shadow-sm shadow-red-600/20';
+                    } else if(options.type === 'success') {
+                        btnConfirm.className = 'px-4 py-2 text-sm font-semibold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 transition-colors shadow-sm shadow-emerald-600/20';
+                    } else {
+                        btnConfirm.className = 'px-4 py-2 text-sm font-semibold text-white bg-sky-600 rounded-xl hover:bg-sky-700 transition-colors shadow-sm shadow-sky-600/20';
+                    }
+                });
+            },
+            
+            close(result) {
+                if(!this.isOpen) return;
+                this.isOpen = false;
+                
+                const overlay = document.getElementById('dialog-overlay');
+                const box = document.getElementById('dialog-box');
+                const bg = document.getElementById('dialog-bg');
+                
+                // Animate out
+                bg.classList.remove('dialog-backdrop');
+                bg.classList.add('dialog-fade-out');
+                
+                box.classList.remove('dialog-content');
+                box.classList.add('dialog-slide-down');
+                
+                setTimeout(() => {
+                    overlay.classList.add('hidden');
+                    if(this.resolveRef) {
+                        this.resolveRef(result);
+                        this.resolveRef = null;
+                    }
+                }, 200); // Wait for animation
+            }
+        };
+
+        // Esc key to close dialog
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && window.Dialog.isOpen) {
+                window.Dialog.close(false);
+            }
+        });
+
+        // 3. MAIN APP LOGIC (Attached to Window)
+        window.app = {
+            currentUser: null,
+            usersData: {},
+            slotsData: {},
+            feedbacksData: {},
+            currentMonthStr: '',
+            activeTab: '',
+            chartStatusInst: null,
+            chartRatingInst: null,
+            
+            init() {
+                // Setup Month
+                const d = new Date();
+                this.currentMonthStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2, '0')}`;
+                
+                // Try Auto-Login
+                const storedUser = localStorage.getItem('totalLimpezaUser');
+                if (storedUser) {
+                    try {
+                        this.currentUser = JSON.parse(storedUser);
+                        document.getElementById('view-login').classList.add('hidden');
+                        this.loadDashboard();
+                    } catch(e) {
+                        localStorage.removeItem('totalLimpezaUser');
+                    }
+                }
+            },
+            
+            // --- AUTHENTICATION ---
+            async login() {
+                const nameIn = document.getElementById('login-name').value.trim();
+                const passIn = document.getElementById('login-pass').value.trim();
+                
+                if(!nameIn || !passIn) {
+                    window.Dialog.show({title: 'Erro', message: 'Preencha todos os campos.', type: 'error'});
+                    return;
+                }
+                
+                const btn = document.querySelector('#login-form button');
+                btn.innerText = 'Verificando...';
+                
+                try {
+                    const snap = await get(ref(db, `${dbRoot}/users`));
+                    let foundUser = null;
+                    let foundUid = null;
+                    
+                    // Case-insensitive check
+                    if (snap.exists()) {
+                        const users = snap.val();
+                        for (let uid in users) {
+                            const u = users[uid];
+                            if (u.name.toLowerCase() === nameIn.toLowerCase() && u.phoneOrPass === passIn) {
+                                foundUser = u;
+                                foundUid = uid;
+                                break;
+                            }
+                        }
+                    }
+
+                    // Admin Failsafe
+                    if (!foundUser && (nameIn.toLowerCase() === 'au costa' || nameIn.toLowerCase() === 'au.costa') && passIn === '80605276') {
+                        const newAdminId = 'au_costa_admin';
+                        const adminData = { name: "Au Costa", phoneOrPass: "80605276", role: "admin" };
+                        await set(ref(db, `${dbRoot}/users/${newAdminId}`), adminData);
+                        foundUser = adminData;
+                        foundUid = newAdminId;
+                    }
+                    
+                    if (foundUser) {
+                        this.currentUser = { uid: foundUid, ...foundUser };
+                        localStorage.setItem('totalLimpezaUser', JSON.stringify(this.currentUser));
+                        document.getElementById('login-name').value = '';
+                        document.getElementById('login-pass').value = '';
+                        document.getElementById('view-login').classList.add('hidden');
+                        this.loadDashboard();
+                    } else {
+                        window.Dialog.show({title: 'Ops', message: 'Usuário ou senha inválidos. Verifique os dados.', type: 'error'});
+                    }
+                } catch(e) {
+                    console.error(e);
+                    window.Dialog.show({title: 'Erro', message: 'Erro de conexão.', type: 'error'});
+                }
+                
+                btn.innerText = 'Entrar no Sistema';
+            },
+            
+            logout() {
+                window.Dialog.show({title: 'Sair', message: 'Deseja realmente sair?', type: 'confirm', confirmText: 'Sair', cancelText: 'Ficar'})
+                .then(res => {
+                    if(res) {
+                        localStorage.removeItem('totalLimpezaUser');
+                        this.currentUser = null;
+                        document.getElementById('view-app').classList.add('hidden');
+                        document.getElementById('view-login').classList.remove('hidden');
+                        
+                        // Destroy charts if exist to prevent bugs on re-login
+                        if(this.chartStatusInst) this.chartStatusInst.destroy();
+                        if(this.chartRatingInst) this.chartRatingInst.destroy();
+                    }
+                });
+            },
+
+            showRegister() {
+                const html = `
+                    <div class="space-y-3 mt-2">
+                        <input type="text" id="reg-name" class="w-full px-3 py-2 border rounded-xl bg-gray-50 focus:bg-white text-sm" placeholder="Nome Completo" required>
+                        <input type="text" id="reg-phone" class="w-full px-3 py-2 border rounded-xl bg-gray-50 focus:bg-white text-sm" placeholder="Telefone (Será sua senha)" required>
+                        <input type="text" id="reg-address" class="w-full px-3 py-2 border rounded-xl bg-gray-50 focus:bg-white text-sm" placeholder="Endereço">
+                    </div>
+                `;
+                window.Dialog.show({
+                    title: 'Cadastro de Cliente',
+                    message: 'Preencha seus dados para acessar:',
+                    customHtml: html,
+                    confirmText: 'Cadastrar'
+                }).then(async (res) => {
+                    if(res) {
+                        const name = document.getElementById('reg-name').value.trim();
+                        const phone = document.getElementById('reg-phone').value.trim();
+                        const address = document.getElementById('reg-address').value.trim();
+                        
+                        if(!name || !phone) {
+                            setTimeout(() => {
+                                window.Dialog.show({title:'Erro', message:'Nome e Telefone são obrigatórios!', type:'error'});
+                            }, 300);
+                            return;
+                        }
+                        
+                        // Check if exists
+                        const snap = await get(ref(db, `${dbRoot}/users`));
+                        let nameExists = false;
+                        let phoneExists = false;
+                        
+                        if(snap.exists()) {
+                            Object.values(snap.val()).forEach(u => {
+                                if(u.name.toLowerCase() === name.toLowerCase()) nameExists = true;
+                                if(u.phoneOrPass === phone) phoneExists = true;
+                            });
+                        }
+                        
+                        if(nameExists) {
+                            setTimeout(() => {
+                                window.Dialog.show({title:'Atenção', message:'Este usuário já existe! Escolha outro nome.', type:'error'});
+                            }, 300);
+                            return;
+                        }
+                        
+                        if(phoneExists) {
+                            setTimeout(() => {
+                                window.Dialog.show({title:'Atenção', message:'Este número já pertence a um usuário!', type:'error'});
+                            }, 300);
+                            return;
+                        }
+                        
+                        // Create
+                        const newUser = { name, phoneOrPass: phone, address, role: 'cliente' };
+                        const newRef = push(ref(db, `${dbRoot}/users`));
+                        await set(newRef, newUser);
+                        
+                        setTimeout(() => {
+                            window.Dialog.show({title:'Sucesso', message:'Cadastro realizado! Faça login.', type:'success'});
+                        }, 300);
+                    }
+                });
+            },
+
+            // --- DASHBOARD ROUTING ---
+            loadDashboard() {
+                document.getElementById('view-app').classList.remove('hidden');
+                document.getElementById('header-user-name').innerText = this.currentUser.name;
+                document.getElementById('header-user-role').innerText = this.currentUser.role;
+                
+                // Hide all panels
+                document.getElementById('panel-admin').classList.add('hidden');
+                document.getElementById('panel-cliente').classList.add('hidden');
+                document.getElementById('panel-funcionario').classList.add('hidden');
+                
+                // Load specific role
+                if (this.currentUser.role === 'admin') {
+                    document.getElementById('panel-admin').classList.remove('hidden');
+                    this.initAdmin();
+                } else if (this.currentUser.role === 'funcionario') {
+                    document.getElementById('panel-funcionario').classList.remove('hidden');
+                    this.initFuncionario();
+                } else {
+                    document.getElementById('panel-cliente').classList.remove('hidden');
+                    this.initCliente();
+                }
+            },
+            
+            // --- ADMIN LOGIC ---
+            initAdmin() {
+                this.switchAdminTab('dashboard');
+                
+                // Load global data real-time
+                onValue(ref(db, `${dbRoot}/users`), snap => {
+                    this.usersData = snap.val() || {};
+                    if(this.activeTab === 'usuarios') this.renderAdminUsers();
+                    this.renderFeedbacks(); // Refresh names
+                });
+                
+                onValue(ref(db, `${dbRoot}/feedbacks`), snap => {
+                    this.feedbacksData = snap.val() || {};
+                    this.renderFeedbacks();
+                    this.updateCharts();
+                });
+                
+                this.loadSlotsForAdmin(this.currentMonthStr);
+            },
+            
+            switchAdminTab(tab) {
+                this.activeTab = tab;
+                ['dashboard', 'agenda', 'ordens', 'usuarios'].forEach(t => {
+                    document.getElementById(`admin-tab-${t}`).classList.add('hidden');
+                    document.getElementById(`tab-btn-${t}`).classList.remove('bg-white', 'shadow-sm', 'text-sky-700');
+                });
+                document.getElementById(`admin-tab-${tab}`).classList.remove('hidden');
+                document.getElementById(`tab-btn-${tab}`).classList.add('bg-white', 'shadow-sm', 'text-sky-700');
+                
+                if(tab === 'dashboard') {
+                    this.initCharts(); 
+                    this.updateCharts();
+                }
+                if(tab === 'agenda') {
+                    document.getElementById('admin-month-picker').value = this.currentMonthStr;
+                    this.renderCalendarAdmin();
+                }
+                if(tab === 'ordens') this.renderOrdensAdmin();
+                if(tab === 'usuarios') this.renderAdminUsers();
+            },
+            
+            loadSlotsForAdmin(yyyymm) {
+                onValue(ref(db, `${dbRoot}/slots/${yyyymm}`), snap => {
+                    this.slotsData = snap.val() || {};
+                    if(this.activeTab === 'dashboard') this.updateCharts();
+                    if(this.activeTab === 'agenda') this.renderCalendarAdmin();
+                    if(this.activeTab === 'ordens') this.renderOrdensAdmin();
+                });
+            },
+            
+            changeMonth(view) {
+                const picker = document.getElementById(`${view}-month-picker`);
+                if(picker.value) {
+                    this.currentMonthStr = picker.value;
+                    if(view === 'admin') this.loadSlotsForAdmin(this.currentMonthStr);
+                    if(view === 'cliente') this.loadSlotsForClient(this.currentMonthStr);
+                }
+            },
+            
+            // ADMIN: Agenda Build
+            renderCalendarAdmin() {
+                const grid = document.getElementById('admin-calendar-grid');
+                grid.innerHTML = '';
+                
+                const [yyyy, mm] = this.currentMonthStr.split('-');
+                const firstDay = new Date(yyyy, parseInt(mm)-1, 1).getDay();
+                const daysInMonth = new Date(yyyy, parseInt(mm), 0).getDate();
+                
+                // Empties
+                for(let i=0; i<firstDay; i++) {
+                    grid.innerHTML += `<div class="bg-white/50"></div>`;
+                }
+                
+                for(let day=1; day<=daysInMonth; day++) {
+                    const dateStr = `${this.currentMonthStr}-${String(day).padStart(2, '0')}`;
+                    const slots = this.slotsData[dateStr] || {};
+                    
+                    let indicator = '';
+                    const hasAvailable = Object.values(slots).some(s => s.status === 'available');
+                    const hasBooked = Object.values(slots).some(s => s.status === 'booked');
+                    const hasCompleted = Object.values(slots).some(s => s.status === 'completed');
+                    
+                    if(hasCompleted) indicator = '<div class="w-2 h-2 rounded-full bg-emerald-500 mx-auto mt-1"></div>';
+                    else if(hasBooked) indicator = '<div class="w-2 h-2 rounded-full bg-red-500 mx-auto mt-1"></div>';
+                    else if(hasAvailable) indicator = '<div class="w-2 h-2 rounded-full bg-sky-500 mx-auto mt-1"></div>';
+                    
+                    grid.innerHTML += `
+                        <div onclick="window.app.adminManageDay('${dateStr}')" class="bg-white p-1 hover:bg-sky-50 cursor-pointer flex flex-col justify-between border border-transparent hover:border-sky-200 transition-colors h-24 sm:h-28">
+                            <span class="text-sm font-semibold text-gray-700 block text-right">${day}</span>
+                            ${indicator}
+                        </div>
+                    `;
+                }
+            },
+            
+            adminManageDay(dateStr) {
+                const [yyyy, mm, dd] = dateStr.split('-');
+                const slots = this.slotsData[dateStr] || {};
+                
+                const mSlotId = Object.keys(slots).find(id => slots[id].turn === 'Manhã');
+                const tSlotId = Object.keys(slots).find(id => slots[id].turn === 'Tarde');
+                
+                const getBtn = (slotId, turn) => {
+                    if(!slotId) return `<button onclick="window.app.adminToggleSlot('${dateStr}', null, '${turn}', true)" class="w-full py-2 bg-gray-100 hover:bg-sky-100 text-gray-600 rounded-lg text-sm font-medium border border-gray-200">➕ Abrir ${turn}</button>`;
+                    const s = slots[slotId];
+                    if(s.status === 'available') return `<button onclick="window.app.adminToggleSlot('${dateStr}', '${slotId}', '${turn}', false)" class="w-full py-2 bg-sky-100 text-sky-700 hover:bg-red-100 hover:text-red-700 rounded-lg text-sm font-medium border border-sky-200">Livres (Clique p/ Fechar)</button>`;
+                    if(s.status === 'booked') {
+                        const cName = this.usersData[s.clientId]?.name || 'Cliente';
+                        return `<div class="w-full py-2 bg-red-50 text-red-700 rounded-lg text-sm font-medium border border-red-200 text-center">Reservado: ${cName}</div>`;
+                    }
+                    if(s.status === 'completed') return `<div class="w-full py-2 bg-emerald-50 text-emerald-700 rounded-lg text-sm font-medium border border-emerald-200 text-center">Concluído ✅</div>`;
+                };
+
+                const html = `
+                    <div class="space-y-3 mt-4">
+                        <div class="p-3 bg-white border border-gray-200 rounded-xl">
+                            <p class="text-xs font-bold text-gray-500 mb-2 uppercase">Turno da Manhã</p>
+                            ${getBtn(mSlotId, 'Manhã')}
+                        </div>
+                        <div class="p-3 bg-white border border-gray-200 rounded-xl">
+                            <p class="text-xs font-bold text-gray-500 mb-2 uppercase">Turno da Tarde</p>
+                            ${getBtn(tSlotId, 'Tarde')}
+                        </div>
+                    </div>
+                `;
+                
+                // Timeout to prevent custom dialog close conflict
+                setTimeout(() => {
+                    window.Dialog.show({
+                        title: `Agenda: ${dd}/${mm}`,
+                        customHtml: html,
+                        type: 'info'
+                    });
+                }, 100);
+            },
+            
+            adminToggleSlot(dateStr, slotId, turn, create) {
+                window.Dialog.close(false);
+                setTimeout(() => {
+                    if(create) {
+                        const newRef = push(ref(db, `${dbRoot}/slots/${dateStr.substring(0,7)}/${dateStr}`));
+                        set(newRef, { turn: turn, status: 'available' });
+                    } else if(slotId) {
+                        remove(ref(db, `${dbRoot}/slots/${dateStr.substring(0,7)}/${dateStr}/${slotId}`));
+                    }
+                }, 250);
+            },
+            
+            adminBulkReleaseMonth() {
+                window.Dialog.show({
+                    title: 'Liberar Mês Completo',
+                    message: `Deseja abrir "Manhã" e "Tarde" para todos os dias de ${this.currentMonthStr} que não estiverem ocupados?`,
+                    type: 'confirm',
+                    confirmText: 'Sim, Liberar'
+                }).then(res => {
+                    if(res) {
+                        const [yyyy, mm] = this.currentMonthStr.split('-');
+                        const daysInMonth = new Date(yyyy, parseInt(mm), 0).getDate();
+                        const updates = {};
+                        
+                        for(let day=1; day<=daysInMonth; day++) {
+                            const dateStr = `${this.currentMonthStr}-${String(day).padStart(2, '0')}`;
+                            const dailySlots = this.slotsData[dateStr] || {};
+                            
+                            let hasMorning = false, hasAfternoon = false;
+                            
+                            // Check existing
+                            for(const k in dailySlots) {
+                                if(dailySlots[k].turn === 'Manhã') hasMorning = true;
+                                if(dailySlots[k].turn === 'Tarde') hasAfternoon = true;
+                            }
+                            
+                            if(!hasMorning) {
+                                const newId = push(child(ref(db), 'dummy')).key;
+                                updates[`${this.currentMonthStr}/${dateStr}/${newId}`] = { turn: 'Manhã', status: 'available' };
+                            }
+                            if(!hasAfternoon) {
+                                const newId = push(child(ref(db), 'dummy')).key;
+                                updates[`${this.currentMonthStr}/${dateStr}/${newId}`] = { turn: 'Tarde', status: 'available' };
+                            }
+                        }
+                        
+                        if(Object.keys(updates).length > 0) {
+                            update(ref(db, `${dbRoot}/slots`), updates).then(() => {
+                                setTimeout(() => {
+                                    window.Dialog.show({title:'Sucesso', message:'Mês liberado com sucesso!', type:'success'});
+                                }, 300);
+                            });
+                        } else {
+                            setTimeout(() => {
+                                window.Dialog.show({title:'Aviso', message:'O mês já está totalmente liberado ou ocupado.', type:'info'});
+                            }, 300);
+                        }
+                    }
+                });
+            },
+
+            // ADMIN: Ordens
+            renderOrdensAdmin() {
+                const list = document.getElementById('admin-ordens-list');
+                list.innerHTML = '';
+                
+                let count = 0;
+                for(const date in this.slotsData) {
+                    for(const id in this.slotsData[date]) {
+                        const s = this.slotsData[date][id];
+                        if(s.status === 'booked') {
+                            count++;
+                            const clientName = this.usersData[s.clientId]?.name || 'Desconhecido';
+                            const [y,m,d] = date.split('-');
+                            list.innerHTML += `
+                                <div class="bg-white p-5 rounded-2xl shadow-sm border border-l-4 border-l-red-500 flex flex-col gap-2">
+                                    <div class="flex justify-between items-start">
+                                        <span class="text-sm font-bold text-gray-900">${d}/${m} - ${s.turn}</span>
+                                        <span class="text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-700 px-2 py-1 rounded-md">Pendente</span>
+                                    </div>
+                                    <p class="text-sm text-gray-600">Cliente: <span class="font-semibold">${clientName}</span></p>
+                                </div>
+                            `;
+                        }
+                    }
+                }
+                if(count === 0) list.innerHTML = '<p class="text-gray-500 text-sm col-span-full">Nenhuma ordem pendente neste mês.</p>';
+            },
+
+            // ADMIN: Dashboard Stats & Charts
+            renderFeedbacks() {
+                const list = document.getElementById('admin-feedbacks-list');
+                list.innerHTML = '';
+                let total = 0, count = 0;
+                
+                const fbs = Object.values(this.feedbacksData).reverse(); // Newest first
+                
+                fbs.forEach(fb => {
+                    total += fb.rating; 
+                    count++;
+                    const cName = this.usersData[fb.clientId]?.name || 'Cliente';
+                    
+                    list.innerHTML += `
+                        <div class="px-5 py-4 hover:bg-gray-50 transition-colors">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-sm font-bold text-gray-800">${cName}</span>
+                                <span class="text-yellow-500 text-xs">${'★'.repeat(fb.rating)}${'☆'.repeat(5-fb.rating)}</span>
+                            </div>
+                            ${fb.comment ? `<p class="text-xs text-gray-600 italic">"${fb.comment}"</p>` : ''}
+                            <span class="text-[10px] text-gray-400 mt-1 block">${fb.date}</span>
+                        </div>
+                    `;
+                });
+                
+                document.getElementById('stat-rating').innerHTML = count > 0 ? `${(total/count).toFixed(1)} <span class="text-xl">⭐</span>` : '0.0 <span class="text-xl">⭐</span>';
+            },
+            
+            initCharts() {
+                // Ensure DOM is ready and canvas exists in view
+                const ctxStatus = document.getElementById('chart-status');
+                const ctxRating = document.getElementById('chart-ratings');
+                
+                if(!ctxStatus || !ctxRating) return;
+
+                if(this.chartStatusInst) this.chartStatusInst.destroy();
+                this.chartStatusInst = new Chart(ctxStatus.getContext('2d'), {
+                    type: 'doughnut',
+                    data: { labels: ['Livres', 'Ocupados', 'Concluídos'], datasets: [{ data: [0,0,0], backgroundColor: ['#38bdf8', '#f87171', '#34d399'] }] },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: {font:{size:10}} } }, cutout: '70%' }
+                });
+
+                if(this.chartRatingInst) this.chartRatingInst.destroy();
+                this.chartRatingInst = new Chart(ctxRating.getContext('2d'), {
+                    type: 'bar',
+                    data: { labels: ['1', '2', '3', '4', '5'], datasets: [{ label: 'Qtd', data: [0,0,0,0,0], backgroundColor: '#facc15', borderRadius: 4 }] },
+                    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: {stepSize:1, display:false}, grid: {display:false} }, x: { grid: {display:false} } }, plugins: { legend: {display:false} } }
+                });
+            },
+            
+            updateCharts() {
+                if(this.activeTab !== 'dashboard') return;
+                
+                let b=0, c=0, a=0;
+                for(let d in this.slotsData) {
+                    for(let id in this.slotsData[d]) {
+                        const s = this.slotsData[d][id];
+                        if(s.status === 'booked') b++;
+                        else if(s.status === 'completed') c++;
+                        else if(s.status === 'available') a++;
+                    }
+                }
+                document.getElementById('stat-agendamentos').innerText = b+c;
+                document.getElementById('stat-concluidos').innerText = c;
+                
+                if(this.chartStatusInst) {
+                    this.chartStatusInst.data.datasets[0].data = [a, b, c];
+                    this.chartStatusInst.update();
+                }
+                
+                if(this.chartRatingInst) {
+                    const r = {1:0, 2:0, 3:0, 4:0, 5:0};
+                    Object.values(this.feedbacksData).forEach(fb => { if(r[fb.rating]!==undefined) r[fb.rating]++; });
+                    this.chartRatingInst.data.datasets[0].data = [r[1], r[2], r[3], r[4], r[5]];
+                    this.chartRatingInst.update();
+                }
+            },
+
+            // ADMIN: Usuarios
+            renderAdminUsers() {
+                const list = document.getElementById('admin-users-list');
+                list.innerHTML = '';
+                for(const uid in this.usersData) {
+                    const u = this.usersData[uid];
+                    list.innerHTML += `
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${u.name}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${u.phoneOrPass}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 uppercase">${u.role}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <button onclick="window.app.adminDeleteUser('${uid}')" class="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-2 rounded-lg transition-colors">Excluir</button>
+                            </td>
+                        </tr>
+                    `;
+                }
+            },
+            
+            adminCreateUser() {
+                const html = `
+                    <div class="space-y-3 mt-2">
+                        <input type="text" id="nu-name" class="w-full px-3 py-2 border rounded-xl bg-gray-50 text-sm" placeholder="Nome" required>
+                        <input type="text" id="nu-pass" class="w-full px-3 py-2 border rounded-xl bg-gray-50 text-sm" placeholder="Senha / Tel" required>
+                        <select id="nu-role" class="w-full px-3 py-2 border rounded-xl bg-gray-50 text-sm">
+                            <option value="cliente">Cliente</option>
+                            <option value="funcionario">Funcionário</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+                `;
+                window.Dialog.show({
+                    title: 'Novo Usuário',
+                    customHtml: html,
+                    confirmText: 'Salvar'
+                }).then(res => {
+                    if(res) {
+                        const name = document.getElementById('nu-name').value.trim();
+                        const pass = document.getElementById('nu-pass').value.trim();
+                        const role = document.getElementById('nu-role').value;
+                        
+                        if(!name || !pass) {
+                            setTimeout(() => {
+                                window.Dialog.show({title:'Erro', message:'Nome e Senha são obrigatórios!', type:'error'});
+                            }, 300);
+                            return;
+                        }
+
+                        let nameExists = false;
+                        let phoneExists = false;
+                        
+                        for(const uid in this.usersData) {
+                            const u = this.usersData[uid];
+                            if(u.name.toLowerCase() === name.toLowerCase()) {
+                                nameExists = true;
+                            }
+                            if(u.phoneOrPass === pass) {
+                                phoneExists = true;
+                            }
+                        }
+
+                        if(nameExists) {
+                            setTimeout(() => {
+                                window.Dialog.show({
+                                    title: 'Atenção', 
+                                    message: 'Este usuário já existe! Escolha outro nome.', 
+                                    type: 'error'
+                                });
+                            }, 300);
+                            return;
+                        }
+                        
+                        if(phoneExists) {
+                            setTimeout(() => {
+                                window.Dialog.show({
+                                    title: 'Atenção', 
+                                    message: 'Este número/senha já pertence a um usuário!', 
+                                    type: 'error'
+                                });
+                            }, 300);
+                            return;
+                        }
+                        
+                        push(ref(db, `${dbRoot}/users`), { name, phoneOrPass: pass, role }).then(() => {
+                            setTimeout(() => {
+                                window.Dialog.show({title:'Sucesso', message:'Usuário criado com sucesso!', type:'success'});
+                            }, 300);
+                        });
+                    }
+                });
+            },
+            
+            adminDeleteUser(uid) {
+                if(uid === this.currentUser.uid) {
+                    window.Dialog.show({title:'Erro', message:'Você não pode excluir a si mesmo.', type:'error'});
+                    return;
+                }
+                window.Dialog.show({
+                    title: 'Cuidado',
+                    message: 'Excluir este usuário permanentemente?',
+                    type: 'error',
+                    confirmText: 'Excluir'
+                }).then(res => {
+                    if(res) remove(ref(db, `${dbRoot}/users/${uid}`));
+                });
+            },
+
+            // --- CLIENT LOGIC ---
+            initCliente() {
+                this.switchClientTab('agendar');
+                this.loadSlotsForClient(this.currentMonthStr);
+            },
+            
+            switchClientTab(tab) {
+                ['agendar', 'meus'].forEach(t => {
+                    document.getElementById(`client-tab-${t}`).classList.add('hidden');
+                    document.getElementById(`tab-btn-client-${t}`).classList.remove('bg-white', 'shadow-sm', 'text-sky-700');
+                });
+                document.getElementById(`client-tab-${tab}`).classList.remove('hidden');
+                document.getElementById(`tab-btn-client-${tab}`).classList.add('bg-white', 'shadow-sm', 'text-sky-700');
+                
+                if(tab === 'agendar') {
+                    document.getElementById('client-month-picker').value = this.currentMonthStr;
+                    this.renderCalendarClient();
+                }
+                if(tab === 'meus') this.renderClientMeus();
+            },
+            
+            loadSlotsForClient(yyyymm) {
+                onValue(ref(db, `${dbRoot}/slots/${yyyymm}`), snap => {
+                    this.slotsData = snap.val() || {};
+                    const isMeus = !document.getElementById('client-tab-meus').classList.contains('hidden');
+                    if(isMeus) this.renderClientMeus();
+                    else this.renderCalendarClient();
+                });
+            },
+            
+            renderCalendarClient() {
+                const grid = document.getElementById('client-calendar-grid');
+                grid.innerHTML = '';
+                
+                const [yyyy, mm] = this.currentMonthStr.split('-');
+                const firstDay = new Date(yyyy, parseInt(mm)-1, 1).getDay();
+                const daysInMonth = new Date(yyyy, parseInt(mm), 0).getDate();
+                
+                for(let i=0; i<firstDay; i++) grid.innerHTML += `<div class="bg-white/30"></div>`;
+                
+                for(let day=1; day<=daysInMonth; day++) {
+                    const dateStr = `${this.currentMonthStr}-${String(day).padStart(2, '0')}`;
+                    const slots = this.slotsData[dateStr] || {};
+                    
+                    const hasAvail = Object.values(slots).some(s => s.status === 'available');
+                    
+                    const opacity = hasAvail ? 'opacity-100 hover:border-sky-300 cursor-pointer' : 'opacity-40 cursor-not-allowed grayscale bg-gray-50';
+                    const marker = hasAvail ? '<div class="w-2 h-2 rounded-full bg-emerald-500 mx-auto mt-2 shadow-[0_0_8px_rgba(16,185,129,0.6)]"></div>' : '';
+                    
+                    grid.innerHTML += `
+                        <div onclick="window.app.clientSelectDay('${dateStr}')" class="bg-white p-2 border border-transparent transition-all h-20 sm:h-24 flex flex-col justify-between ${opacity}">
+                            <span class="text-sm font-bold text-gray-700 block text-right">${day}</span>
+                            ${marker}
+                        </div>
+                    `;
+                }
+            },
+            
+            clientSelectDay(dateStr) {
+                const slots = this.slotsData[dateStr] || {};
+                const available = Object.entries(slots).filter(([id, s]) => s.status === 'available');
+                
+                if(available.length === 0) return; // Prevent clicking empty/greyed days
+                
+                const [y, m, d] = dateStr.split('-');
+                let html = '<div class="space-y-3 mt-4">';
+                
+                available.forEach(([id, s]) => {
+                    html += `
+                        <button onclick="window.app.clientBookSlot('${dateStr}', '${id}')" class="w-full py-4 bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold rounded-xl hover:bg-emerald-500 hover:text-white transition-all text-lg flex items-center justify-center gap-2 shadow-sm">
+                            ${s.turn === 'Manhã' ? '🌅' : '🌇'} Turno da ${s.turn}
+                        </button>
+                    `;
+                });
+                html += '</div>';
+                
+                setTimeout(() => {
+                    window.Dialog.show({
+                        title: `Horários em ${d}/${m}`,
+                        customHtml: html,
+                        type: 'info'
+                    });
+                }, 50);
+            },
+            
+            clientBookSlot(dateStr, slotId) {
+                window.Dialog.close(false);
+                setTimeout(() => {
+                    update(ref(db, `${dbRoot}/slots/${dateStr.substring(0,7)}/${dateStr}/${slotId}`), {
+                        status: 'booked',
+                        clientId: this.currentUser.uid
+                    }).then(() => {
+                        window.Dialog.show({title: 'Sucesso', message: 'Serviço agendado! Verifique na aba "Meus Agendamentos".', type: 'success'})
+                        .then(() => { this.switchClientTab('meus'); });
+                    });
+                }, 250);
+            },
+            
+            renderClientMeus() {
+                const list = document.getElementById('client-meus-list');
+                list.innerHTML = '';
+                let count = 0;
+                
+                for(const date in this.slotsData) {
+                    for(const id in this.slotsData[date]) {
+                        const s = this.slotsData[date][id];
+                        if((s.status === 'booked' || s.status === 'completed') && s.clientId === this.currentUser.uid) {
+                            count++;
+                            const isDone = s.status === 'completed';
+                            const [y,m,d] = date.split('-');
+                            
+                            let btn = '';
+                            if(!isDone) {
+                                btn = `<button onclick="window.app.clientCompleteService('${date}', '${id}')" class="mt-3 w-full py-2 bg-sky-600 hover:bg-sky-700 text-white text-sm font-bold rounded-xl transition-colors shadow-md shadow-sky-600/30">Concluir & Avaliar</button>`;
+                            }
+                            
+                            list.innerHTML += `
+                                <div class="bg-white p-5 rounded-2xl shadow-sm border ${isDone ? 'border-emerald-200 bg-emerald-50/30' : 'border-sky-200'} flex flex-col justify-between">
+                                    <div>
+                                        <div class="flex justify-between items-center mb-2">
+                                            <span class="text-xl font-black text-gray-900">${d}/${m}</span>
+                                            <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md ${isDone ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">${isDone ? 'Concluído' : 'Pendente'}</span>
+                                        </div>
+                                        <p class="text-sm font-semibold text-gray-600 flex items-center gap-1">
+                                            ${s.turn === 'Manhã' ? '🌅' : '🌇'} ${s.turn}
+                                        </p>
+                                    </div>
+                                    ${btn}
+                                </div>
+                            `;
+                        }
+                    }
+                }
+                
+                if(count === 0) list.innerHTML = '<p class="text-gray-500 text-sm col-span-full">Você não tem agendamentos no momento.</p>';
+            },
+            
+            clientCompleteService(dateStr, slotId) {
+                // UI for Rating and Feedback (Reschedule Option Removed)
+                const html = `
+                    <div class="mt-4 flex flex-col items-center">
+                        <p class="text-sm text-gray-600 mb-2 font-medium">Como foi o serviço?</p>
+                        <div class="flex gap-2 mb-4 text-3xl" id="star-container">
+                            <span class="star-rating-btn grayscale" onclick="window.app.setRating(1)">⭐</span>
+                            <span class="star-rating-btn grayscale" onclick="window.app.setRating(2)">⭐</span>
+                            <span class="star-rating-btn grayscale" onclick="window.app.setRating(3)">⭐</span>
+                            <span class="star-rating-btn grayscale" onclick="window.app.setRating(4)">⭐</span>
+                            <span class="star-rating-btn grayscale" onclick="window.app.setRating(5)">⭐</span>
+                        </div>
+                        <p id="star-desc" class="text-xs font-bold text-sky-600 mb-4 h-4"></p>
+                        
+                        <textarea id="feedback-txt" rows="2" class="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white text-sm focus:ring-2 focus:ring-sky-500 outline-none transition-all" placeholder="Deixe um comentário (opcional)"></textarea>
+                    </div>
+                `;
+                
+                this.currentRating = 0; // reset
+                
+                window.Dialog.show({
+                    title: 'Concluir Serviço',
+                    customHtml: html,
+                    confirmText: 'Enviar e Concluir'
+                }).then(res => {
+                    if(res) {
+                        if(this.currentRating === 0) {
+                            setTimeout(() => {
+                                window.Dialog.show({title:'Aviso', message:'Por favor, selecione uma nota de 1 a 5 estrelas.', type:'info'});
+                            }, 300);
+                            return;
+                        }
+                        
+                        const comment = document.getElementById('feedback-txt').value.trim();
+                        
+                        // 1. Update Slot
+                        update(ref(db, `${dbRoot}/slots/${dateStr.substring(0,7)}/${dateStr}/${slotId}`), { status: 'completed' });
+                        
+                        // 2. Save Feedback
+                        const dateNow = new Date().toLocaleDateString('pt-BR');
+                        push(ref(db, `${dbRoot}/feedbacks`), {
+                            clientId: this.currentUser.uid,
+                            rating: this.currentRating,
+                            comment: comment,
+                            date: dateNow
+                        });
+                        
+                        setTimeout(() => {
+                            window.Dialog.show({title:'Sucesso', message:'Serviço concluído e avaliado. Obrigado!', type:'success'});
+                        }, 300);
+                    }
+                });
+            },
+            
+            setRating(val) {
+                this.currentRating = val;
+                const stars = document.querySelectorAll('.star-rating-btn');
+                const desc = document.getElementById('star-desc');
+                
+                stars.forEach((s, idx) => {
+                    if(idx < val) s.classList.remove('grayscale');
+                    else s.classList.add('grayscale');
+                });
+                
+                const texts = ['Muito Ruim', 'Ruim', 'Bom', 'Muito Bom', 'EXCELENTE!'];
+                desc.innerText = texts[val-1];
+            },
+            
+            // --- FUNCIONARIO LOGIC ---
+            initFuncionario() {
+                onValue(ref(db, `${dbRoot}/slots/${this.currentMonthStr}`), snap => {
+                    this.slotsData = snap.val() || {};
+                    this.renderFuncionarioOrdens();
+                });
+            },
+            
+            renderFuncionarioOrdens() {
+                const list = document.getElementById('funcionario-ordens-list');
+                list.innerHTML = '';
+                
+                let count = 0;
+                for(const date in this.slotsData) {
+                    for(const id in this.slotsData[date]) {
+                        const s = this.slotsData[date][id];
+                        if(s.status === 'booked') {
+                            count++;
+                            const [y,m,d] = date.split('-');
+                            // Fetch user name async just for display
+                            get(ref(db, `${dbRoot}/users/${s.clientId}`)).then(snap => {
+                                const cName = snap.exists() ? snap.val().name : 'Desconhecido';
+                                const cAddr = snap.exists() ? snap.val().address : 'Endereço não informado';
+                                
+                                list.innerHTML += `
+                                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-l-4 border-l-sky-500">
+                                        <div class="flex justify-between items-start mb-2">
+                                            <span class="text-sm font-black text-gray-900">${d}/${m} - ${s.turn}</span>
+                                        </div>
+                                        <p class="text-sm text-gray-800 font-semibold mb-1">Cliente: ${cName}</p>
+                                        <p class="text-xs text-gray-500">Endereço: ${cAddr}</p>
+                                    </div>
+                                `;
+                            });
+                        }
+                    }
+                }
+                
+                if(count === 0) list.innerHTML = '<p class="text-gray-500 text-sm">Nenhum serviço agendado para este mês.</p>';
+            }
+        };
+
+        // RUN INIT
+        window.addEventListener('DOMContentLoaded', () => {
+            window.app.init();
+        });
+
+    </script>
+</body>
+</html>
